@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JSGB</title>
+  <link rel="stylesheet" type="text/css" href="css/gameboy.css">
+</head>
+<body>
+
+<canvas id='display' width=160 height=144 tabindex="1"></canvas>
+<div class="disassembler">
+  <pre id="status"></pre>
+  <div class="controls">
+    <input type="button" onclick="gb.run()" value="Run"/>
+    <input type="button" onclick="gb.stop()" value="Stop"/>
+    <input type=button onclick="gb.step()" value="Step">
+  </div>
+  <ul id="disassembler"></ul>
+</div>
+
+<script src='js/assets.js'></script>
+<script src='js/lib/gameboy.js'></script>
+<script src='js/lib/renderer.js'></script>
+<script src='js/lib/cpu.js'></script>
+<script src='js/lib/gpu.js'></script>
+<script src='js/lib/sound.js'></script>
+<script src='js/lib/timer.js'></script>
+<script src='js/lib/serial.js'></script>
+<script src='js/lib/input.js'></script>
+<script src='js/lib/memory.js'></script>
+<script src='js/lib/memory/null.js'></script>
+<script src='js/lib/memory/mbc1.js'></script>
+<script src='js/lib/memory/mbc2.js'></script>
+<script src='js/lib/memory/mbc3.js'></script>
+<script src='js/lib/memory/mbc5.js'></script>
+<script>
+  var gb = new GameBoy('display', 'status', 'disassembler');
+</script>
+</body>
+</html>
