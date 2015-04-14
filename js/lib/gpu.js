@@ -59,7 +59,7 @@
 
       this.r.curline = 0;
       this.r.curscan = 0;
-      this.r.linemode = 2;
+      this.r.mode = 2;
       this.r.modeclocks = 0;
       this.r.yscr = 0;
       this.r.xscr = 0;
@@ -78,6 +78,9 @@
       this.r.wintilebase = 0x1800;
 
       for (i = 0; i < 160; i++) this._scanrow[i] = 0;
+      for (i = 0; i < 40; i++) {
+        this._objdata[i] = new ObjData(-16, -8, 0, 0, 0, 0, 0, i);
+      }
 
       this._ctx = this.gb.canvas.getContext('2d');
       this._scrn = this._ctx.createImageData(160, 144);
@@ -93,7 +96,7 @@
     read: function (addr) {
       if (addr >= 0x8000 && addr <= 0x9FFF) {
         return this._vram[addr & 0x1FFF];
-      } else if (addr >= 0xffe0 && addr < 0xffff) {
+      } else if (addr >= 0xFE00 && addr <= 0xFE9F) {
         return this._oam[addr & 0xFF];
       }
       switch (addr) {
@@ -105,7 +108,7 @@
               (this.r.objon ? 0x02 : 0) |
               (this.r.bgon ? 0x01 : 0);
         case 0xFF41: // FF41 LCD Status
-          return (this.r.curline == this.r.raster ? 4 : 0) | this.r.linemode;
+          return (this.r.curline == this.r.raster ? 4 : 0) | this.r.mode;
         case 0xFF42: // FF42 SCY
           return this.r.yscr;
         case 0xFF43: // FF43 SCX
@@ -130,7 +133,7 @@
         this._vram[addr & 0x1FFF] = val;
         this.updateTileset(addr & 0x1FFF, val);
         return;
-      } else if (addr >= 0xffe0 && addr < 0xffff) {
+      } else if (addr >= 0xFE00 && addr <= 0xFE9F) {
         this._oam[addr & 0xFF] = val;
         this.updateOAM(addr, val);
         return;
@@ -165,35 +168,61 @@
         case 0xFF47: // FF47 BG and Window Palette
           for (var i = 0; i < 4; i++) {
             switch ((val >> (i * 2)) & 3) {
-              case 0: this._palette.bg[i] = 0xFF; break;
-              case 1: this._palette.bg[i] = 0xC0; break;
-              case 2: this._palette.bg[i] = 0x60; break;
-              case 3: this._palette.bg[i] = 0x00; break;
+              case 0:
+                this._palette.bg[i] = 0xFF;
+                break;
+              case 1:
+                this._palette.bg[i] = 0xC0;
+                break;
+              case 2:
+                this._palette.bg[i] = 0x60;
+                break;
+              case 3:
+                this._palette.bg[i] = 0x00;
+                break;
             }
           }
+          break;
         case 0xFF48: // FF48 Obj0 Palette
-          for(var i = 0; i < 4; i++) {
-            switch((val >>(i*2))&3) {
-              case 0: this._palette.obj0[i] = 0xFF; break;
-              case 1: this._palette.obj0[i] = 0xC0; break;
-              case 2: this._palette.obj0[i] = 0x60; break;
-              case 3: this._palette.obj0[i] = 0x00; break;
+          for (var i = 0; i < 4; i++) {
+            switch ((val >> (i * 2)) & 3) {
+              case 0:
+                this._palette.obj0[i] = 0xFF;
+                break;
+              case 1:
+                this._palette.obj0[i] = 0xC0;
+                break;
+              case 2:
+                this._palette.obj0[i] = 0x60;
+                break;
+              case 3:
+                this._palette.obj0[i] = 0x00;
+                break;
             }
           }
-          return;
+          break;
         case 0xFF49: // FF49 Obj1 Palette
-          for(var i = 0; i < 4; i++) {
-            switch((val >>(i*2))&3) {
-              case 0: this._palette.obj1[i] = 0xFF; break;
-              case 1: this._palette.obj1[i] = 0xC0; break;
-              case 2: this._palette.obj1[i] = 0x60; break;
-              case 3: this._palette.obj1[i] = 0x00; break;
+          for (var i = 0; i < 4; i++) {
+            switch ((val >> (i * 2)) & 3) {
+              case 0:
+                this._palette.obj1[i] = 0xFF;
+                break;
+              case 1:
+                this._palette.obj1[i] = 0xC0;
+                break;
+              case 2:
+                this._palette.obj1[i] = 0x60;
+                break;
+              case 3:
+                this._palette.obj1[i] = 0x00;
+                break;
             }
           }
-          return;
+          break;
         case 0xFF4A: // FF4A Window Y
         case 0xFF4B: // FF4B Window X
         default:
+          break;
       }
     },
 
@@ -252,15 +281,15 @@
        3:
        */
       this.r.modeclocks += this.gb.cpu.cycles;
-      switch (this.r.linemode) {
+      switch (this.r.mode) {
         case 0: //HBlank
           if (this.r.modeclocks >= 0xcc) {
             if (this.r.curline == 143) { // End of HBlank, render
-              this.r.linemode = 1;
+              this.r.mode = 1;
               this.blitScreen();
               this.gb.memory._interrupts |= 0x01; //Set HBlank interrupt flag
             } else {
-              this.r.linemode = 2;
+              this.r.mode = 2;
             }
 
             this.r.curline++;
@@ -275,109 +304,134 @@
             if (this.r.curline > 153) {
               this.r.curline = 0;
               this.r.curscan = 0;
-              this.r.linemode = 2;
+              this.r.mode = 2;
             }
           }
           break;
         case 2: //OAM-Read
           if (this.r.modeclocks >= 0x50) {
             this.r.modeclocks = 0;
-            this.r.linemode = 3;
+            this.r.mode = 3;
           }
           break;
         case 3: //VRAM-Read
           if (this.r.modeclocks >= 0xac) {
             this.r.modeclocks = 0;
-            this.r.linemode = 0;
+            this.r.mode = 0;
             if (this.r.lcdon) {
               //We are actually displaying things
-              if (this.r.bgon) {
-                //We want to render the background
-                var linebase = this.r.curscan,
-                    mapbase = this.r.bgmapbase + ((((this.r.curline + this.r.yscr) & 255) >> 3) << 5),
-                    y = (this.r.curline + this.r.yscr) & 7,
-                    x = this.r.xscr & 7,
-                    t = (this.r.yscr >> 3) & 31,
-                    w = 160,
-                    pixel, tile, tilerow;
-
-                if (this.r.bgtilebase) {
-                  tile = this._vram[mapbase + t];
-                  if (tile < 128) tile = 256 + tile;
-                  tilerow = this._tilemap[tile][y];
-                  do {
-                    this._scanrow[160 - x] = tilerow[x];
-                    this._scrn[linebase + 3] = this._palette.bg[tilerow[x]];
-                    x++;
-                    if (x == 8) {
-                      t = (t + 1) & 31;
-                      x = 0;
-                      tile = this._vram[mapbase + t];
-                      if (tile < 128) tile = 256 + tile;
-                      tilerow = this._tilemap[tile][y];
-                    }
-                    linebase += 4;
-                  } while (--w);
-                } else {
-                  tilerow = this._tilemap[this._vram[mapbase + t]][y];
-                  do {
-                    this._scanrow[160 - x] = tilerow[x];
-                    this._scrn.data[linebase + 3] = this._palette.bg[tilerow[x]];
-                    x++;
-                    if (x == 8) {
-                      t = (t + 1) & 31;
-                      x = 0;
-                      tilerow = this._tilemap[this._vram[mapbase + t]][y];
-                    }
-                    linebase += 4;
-                  } while (--w);
-                }
-              }
-              if (this.r.objon) {
-                var cnt = 0;
-                var tilerow, obj, pal, pixel, x, linebase = this.r.curscan;
-                for (var i = 0; i < 40; i++) {
-                  obj = this._objdatasorted[i];
-                  if (obj.y <= this.r.curline && (obj.y + 8) > this.r.curline) {
-                    if (obj.yflip) {
-                      tilerow = this._tilemap[obj.tile][7 - (this.r.curline - obj.y)];
-                    } else {
-                      tilerow = this._tilemap[obj.tile][this.r.curline - obj.y];
-                    }
-
-                    if (obj.palette) {
-                      pal = this._palette.obj1;
-                    } else {
-                      pal = this._palette.obj0;
-                    }
-
-                    linebase = (this.r.curline * 160 + obj.x) * 4;
-
-                    for (x = 0; x < 8; x++) {
-                      if (obj.x + x >= 0 && obj.x + x < 160) {
-                        if (obj.xflip) {
-                          if (tilerow[7 - x] && (obj.prio || !this.r._scanrow[x])) {
-                            this._scrn.data[linebase + 3] = pal[tilerow[7 - x]];
-                          }
-                        } else {
-                          if (tilerow[7 - x] && (obj.prio || !this._scanrow[x])) {
-                            this._scrn.data[linebase + 3] = pal[tilerow[x]];
-                          }
-
-                        }
-                      }
-                      linebase += 4;
-                    }
-                    cnt++;
-                    if (cnt > 10) break;
-                  }
-                } // End obj loop
-              } // End objon
+              this.renderScanBG();
+              this.renderScanObj();
             }
           }
           break;
       }
+    },
+    renderScanBG: function () {
+      if (this.r.bgon) {
+        //We want to render the background
+        var linebase = this.r.curscan,
+            mapbase = this.r.bgmapbase + ((((this.r.curline + this.r.yscr) & 255) >> 3) << 5),
+            y = (this.r.curline + this.r.yscr) & 7,
+            x = this.r.xscr & 7,
+            t = (this.r.yscr >> 3) & 31,
+            w = 160,
+            pixel, tile, tilerow;
+
+        if (this.r.bgtilebase) {
+          tile = this._vram[mapbase + t];
+          if (tile < 128) tile = 256 + tile;
+          tilerow = this._tilemap[tile][y];
+          do { // while ( --w )
+            //Loop through pixels from 0 - 160
+            // Set them in the scanrow for obj rendering, as well as in the screen data
+            this._scanrow[160 - x] = tilerow[x];
+            this._scrn.data[linebase + 0] = this._palette.bg[tilerow[x]];
+            this._scrn.data[linebase + 1] = this._palette.bg[tilerow[x]];
+            this._scrn.data[linebase + 2] = this._palette.bg[tilerow[x]];
+            this._scrn.data[linebase + 3] = 255;
+            x++;
+            if (x == 8) {
+              t = (t + 1) & 31;
+              x = 0;
+              tile = this._vram[mapbase + t];
+              if (tile < 128) tile = 256 + tile;
+              tilerow = this._tilemap[tile][y];
+            }
+            linebase += 4;
+          } while (--w);
+        } else {
+          tilerow = this._tilemap[this._vram[mapbase + t]][y];
+          do {
+            this._scanrow[160 - x] = tilerow[x];
+            this._scrn.data[linebase + 0] = this._palette.bg[tilerow[x]];
+            this._scrn.data[linebase + 1] = this._palette.bg[tilerow[x]];
+            this._scrn.data[linebase + 2] = this._palette.bg[tilerow[x]];
+            this._scrn.data[linebase + 3] = 255; //this._palette.bg[tilerow[x]];
+            x++;
+            if (x == 8) {
+              t = (t + 1) & 31;
+              x = 0;
+              tilerow = this._tilemap[this._vram[mapbase + t]][y];
+            }
+            linebase += 4;
+          } while (--w);
+        }
+      }
+    },
+    renderScanObj: function () {
+      if (this.r.objon) {
+        var cnt = 0;
+        var tilerow, obj, pal, pixel, x, linebase = this.r.curscan;
+        for (var i = 0; i < 40; i++) {
+          obj = this._objdatasorted[i];
+          if (obj.y <= this.r.curline && (obj.y + 8) > this.r.curline) {
+            if (obj.yflip) {
+              tilerow = this._tilemap[obj.tile][7 - (this.r.curline - obj.y)];
+            } else {
+              tilerow = this._tilemap[obj.tile][this.r.curline - obj.y];
+            }
+
+            if (obj.palette) {
+              pal = this._palette.obj1;
+            } else {
+              pal = this._palette.obj0;
+            }
+
+            linebase = (this.r.curline * 160 + obj.x) * 4;
+
+            for (x = 0; x < 8; x++) {
+              if (obj.x + x >= 0 && obj.x + x < 160) {
+                if (obj.xflip) {
+                  if (tilerow[7 - x] && (obj.prio || !this.r._scanrow[x])) {
+                    this._scrn.data[linebase + 3] = pal[tilerow[7 - x]];
+                  }
+                } else {
+                  if (tilerow[7 - x] && (obj.prio || !this._scanrow[x])) {
+                    this._scrn.data[linebase + 3] = pal[tilerow[x]];
+                  }
+
+                }
+              }
+              linebase += 4;
+            }
+            cnt++;
+            if (cnt > 10) break;
+          }
+        } // End obj loop
+      }
     }
+  };
+
+  var ObjData = function (y, x, tile, palette, yflip, xflip, prio, num) {
+    this.y = y;
+    this.x = x;
+    this.tile = tile;
+    this.palette = palette;
+    this.yflip = yflip;
+    this.xflip = xflip;
+    this.prio = prio;
+    this.num = num;
   };
 
   GPU.PALETTES = [];

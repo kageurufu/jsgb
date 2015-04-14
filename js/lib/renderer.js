@@ -17,7 +17,7 @@
       this.e_log.textContent = s;
     },
     disassembly: function () {
-      var d = this.gb.cpu.disassemble(this.gb.cpu.r.pc, 32);
+      var d = this.gb.cpu.disassemble(this.gb.cpu.r.pc, 64);
       this.disassembler.innerHTML = '';
 
       for (var i = 0; i < d.length; i++) {

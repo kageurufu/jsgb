@@ -21,6 +21,7 @@
       } else {
         this.cycles += 1;
       }
+      this.checkInterrupts();
     },
     exec: function () {
       var opcode = this.gb.memory.read(this.r.pc),
@@ -31,6 +32,32 @@
 
       this.r.pc += op.len;
       return cycles;
+    },
+    checkInterrupts: function () {
+      if (this.interruptsEnabled && this.gb.memory._ie && this.gb.memory._if) {
+        //Interrupt set, run it
+        this.halted = false;
+        this.interruptsEnabled = false;
+        var whichInterrupt = this.gb.memory._ie & this.gb.memory._if;
+        if (whichInterrupt & 0x01) {
+          this.gb.memory._if &= 0xfe;
+          OP_FUNCS.RST(0x40)(gb);
+        } else if (whichInterrupt & 0x02) {
+          this.gb.memory._if &= 0xfd;
+          OP_FUNCS.RST(0x48)(gb);
+        } else if (whichInterrupt & 0x04) {
+          this.gb.memory._if &= 0xfb;
+          OP_FUNCS.RST(0x50)(gb);
+        } else if (whichInterrupt & 0x08) {
+          this.gb.memory._if &= 0xf7;
+          OP_FUNCS.RST(0x58)(gb);
+        } else if (whichInterrupt & 0x10) {
+          this.gb.memory._if &= 0xef;
+          OP_FUNCS.RST(0x60)(gb);
+        } else {
+          this.interruptsEnabled = true;
+        }
+      }
     },
     disassemble: function (addr, count) {
       var out = [];
@@ -891,10 +918,11 @@
 
     0xF0: new OpInfo(0xF0, "LDH A,(a8)", OP_FUNCS.LDA, ADDR_MODE.INDIRECT_N, 2, 12),
 
+    0x02: new OpInfo(0x02, "LD (BC),A", OP_FUNCS.LDxxA, ADDR_MODE.INDIRECT_BC, 1, 8),
+    0x12: new OpInfo(0x12, "LD (DE),A", OP_FUNCS.LDxxA, ADDR_MODE.INDIRECT_DE, 1, 8),
+    0x36: new OpInfo(0x36, "LD (HL),d8", OP_FUNCS.LDxxA, ADDR_MODE.INDIRECT_HL, 2, 12),
+
     // Unimplemented (I'm just trying to get through the BIOS right now >_> )
-    0x02: new OpInfo(0x02, "LD (BC),A", OP_FUNCS.UNIMPLEMENTED, null, 1, 8),
-    0x12: new OpInfo(0x12, "LD (DE),A", OP_FUNCS.UNIMPLEMENTED, null, 1, 8),
-    0x36: new OpInfo(0x36, "LD (HL),d8", OP_FUNCS.UNIMPLEMENTED, null, 2, 12),
 
     0xFA: new OpInfo(0xFA, "LD A,(a16)", OP_FUNCS.UNIMPLEMENTED, null, 3, 16),
     0x2A: new OpInfo(0x2A, "LD A,(HL+)", OP_FUNCS.UNIMPLEMENTED, null, 1, 8),

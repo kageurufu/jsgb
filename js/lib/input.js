@@ -11,7 +11,7 @@
     this._column = 0;
     this._columns = [0x0F, 0x0F];
 
-    gamepadSupport.init(this);
+    //gamepadSupport.init(this);
   };
 
   Input.prototype = {

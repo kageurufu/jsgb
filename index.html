@@ -7,13 +7,16 @@
 <body>
 
 <canvas id='display' width=160 height=144 tabindex="1"></canvas>
+<span id="fps"></span>
 <div class="disassembler">
   <pre id="status"></pre>
   <div class="controls">
     <input type="button" onclick="gb.run()" value="Run"/>
     <input type="button" onclick="gb.stop()" value="Stop"/>
+    <input type=button onclick="gb.frame()" value="Frame">
     <input type=button onclick="gb.step()" value="Step">
   </div>
+  <pre id="SERIAL"></pre>
   <ul id="disassembler"></ul>
 </div>
 
@@ -27,11 +30,6 @@
 <script src='js/lib/serial.js'></script>
 <script src='js/lib/input.js'></script>
 <script src='js/lib/memory.js'></script>
-<script src='js/lib/memory/null.js'></script>
-<script src='js/lib/memory/mbc1.js'></script>
-<script src='js/lib/memory/mbc2.js'></script>
-<script src='js/lib/memory/mbc3.js'></script>
-<script src='js/lib/memory/mbc5.js'></script>
 <script>
   var gb = new GameBoy('display', 'status', 'disassembler');
 </script>

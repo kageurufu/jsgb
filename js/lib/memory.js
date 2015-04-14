@@ -11,7 +11,7 @@
     this._zram = new Uint8Array(new ArrayBuffer(0x7F)); //127B
 
     this._bios = getAsset("DMG_ROM.bin").asUint8Array();
-    this._rom = getAsset("roms/cpu_instrs/individual/06-ld r,r.gb").asUint8Array();
+    this._rom = getAsset("roms/Asteroids.gb").asUint8Array();
 
     this._romEnabled = true;
 
