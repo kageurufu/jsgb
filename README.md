@@ -1,6 +1,8 @@
 JSGB
 ====
 
+![BOOT ROM Finished!](img/bootrom.png)
+
 Javascript Gameboy Emulator
 
 Not trying for cycle-accurate emulation, cause fuck memory read timing
@@ -9,10 +11,8 @@ I'm planning for a basic Serial implementation, possibly over WebRTC (that would
 or just serial dumping. Theres basic serial IO dumping to the console for output of Blargg's 
 test roms, until I get the PPU actually working
 
-Shouldnt be long, I just need to figure out why its only writing 0xFF to the gpu screen
-
-Debugger
-========
+Current Issues
+==============
 
 * No breakpoint support
 * Exceptions in gb.cpu or gb.gpu steps cause failures in gb.frame()
