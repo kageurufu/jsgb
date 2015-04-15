@@ -249,11 +249,11 @@
 
   var OP_FUNCS = {
     UNDOCUMENTED: function (gb) {
-      console.log(this, gb.r);
+      console.log(this, gb.cpu.r);
       throw 'Undocumented Opcode';
     },
     UNIMPLEMENTED: function (gb) {
-      console.log(this);
+      console.log(this, gb.cpu.r);
 
       throw this;
     },
@@ -349,6 +349,9 @@
     JPxx: function (gb, addr) {
       var address = addr(gb);
       gb.cpu.r.pc = gb.memory.readWord(address) - this.len;
+    },
+    JPd16: function(gb) {
+      gb.cpu.r.pc = gb.memory.readWord(gb.cpu.r.pc + 1) - this.len;
     },
     /* Indirect jumps */
     JRx: function (gb, addr) {
@@ -578,7 +581,14 @@
     },
     ADDAr: function (r) {
       return function (gb) {
-        throw 'NotImplemented';
+        gb.cpu.r.a += gb.cpu.r[r];
+
+        gb.cpu.r.n = 0;
+        gb.cpu.r.h = 0; // TODO: FIX
+        gb.cpu.r.c = gb.cpu.r.a > 0xFF;
+
+        gb.cpu.r.a &= 0xFF;
+        gb.cpu.r.z = gb.cpu.r.a ? 0 : 1;
       }
     },
     ADCAr: function (r) {
@@ -602,11 +612,14 @@
       return function (gb) {
         gb.cpu.r.a &= gb.cpu.r[r];
         gb.cpu.r.fset(!gb.cpu.r.a, 0, 1, 0);
+        gb.cpu.r.a &= 0xFF;
       }
     },
     ORr: function (r) {
       return function (gb) {
-        throw 'NotImplemented';
+        gb.cpu.r.a |= gb.cpu.r[r];
+        gb.cpu.r.fset(!gb.cpu.r.a, 0, 1, 0);
+        gb.cpu.r.a &= 0xFF;
       }
     },
     CPr: function (r) {
@@ -886,7 +899,7 @@
     0xCA: new OpInfo(0xCA, "JP Z,a16", OP_FUNCS.JPZxx, null, 3, 12 /* or 16 */),
     0xD2: new OpInfo(0xD2, "JP NC,a16", OP_FUNCS.JPNCxx, null, 3, 12 /* or 16 */),
     0xDA: new OpInfo(0xDA, "JP C,a16", OP_FUNCS.JPCxx, null, 3, 16 / 12),
-    0xC3: new OpInfo(0xC3, "JP a16", OP_FUNCS.JPxx, ADDR_MODE.INDIRECT_NN, 3, 16),
+    0xC3: new OpInfo(0xC3, "JP a16", OP_FUNCS.JPd16, ADDR_MODE.DIRECT_NN, 3, 16),
     0xE9: new OpInfo(0xE9, "JP (HL)", OP_FUNCS.JPxx, ADDR_MODE.INDIRECT_HL, 1, 4),
 
     0x18: new OpInfo(0x18, "JR r8", OP_FUNCS.JRx, null, 2, 8),

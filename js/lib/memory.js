@@ -16,6 +16,7 @@
     this._romEnabled = true;
 
 
+    this._if = 0; //0xFF0F
     this._ie = 0; //0xFFFF
   };
 
@@ -197,7 +198,7 @@
         case 0x6000:
         case 0x7000:
           // ROM 1 (Bankable)
-          console.log("Write to ROM");
+          console.log("Write to ROM at $" + GameBoy.toHex(addr, 4));
           return this._rom[addr] = val;
           return;
         case 0x8000:

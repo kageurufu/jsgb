@@ -108,9 +108,22 @@
               (this.r.objon ? 0x02 : 0) |
               (this.r.bgon ? 0x01 : 0);
         case 0xFF41: // FF41 LCD Status
+          // TODO: Fix this
+          /*
+           Bit 6 - LYC=LY Coincidence Interrupt (1=Enable) (Read/Write)
+           Bit 5 - Mode 2 OAM Interrupt         (1=Enable) (Read/Write)
+           Bit 4 - Mode 1 V-Blank Interrupt     (1=Enable) (Read/Write)
+           Bit 3 - Mode 0 H-Blank Interrupt     (1=Enable) (Read/Write)
+           Bit 2 - Coincidence Flag  (0:LYC<>LY, 1:LYC=LY) (Read Only)
+           Bit 1-0 - Mode Flag       (Mode 0-3, see below) (Read Only)
+             0: During H-Blank
+             1: During V-Blank
+             2: During Searching OAM
+             3: During Transferring Data to LCD Driver
+           */
           return (this.r.curline == this.r.raster ? 4 : 0) | this.r.mode;
         case 0xFF42: // FF42 SCY
-          return this.r.yscr;
+          return this.r.yscr; 
         case 0xFF43: // FF43 SCX
           return this.r.xscr;
         case 0xFF44: // FF44 LY
@@ -125,7 +138,7 @@
         case 0xFF4A: // FF4A Window Y
         case 0xFF4B: // FF4B Window X
         default:
-          return this.r.reg[addr];
+          return this.r.reg[addr] || 0;
       }
     },
     write: function (addr, val) {
@@ -147,9 +160,11 @@
           this.r.objsize = (val & 0x04) ? 1 : 0;
           this.r.objon = (val & 0x02) ? 1 : 0;
           this.r.bgon = (val & 0x01) ? 1 : 0;
+          console.log("BGMapBase: $" + GameBoy.toHex(this.r.bgmapbase, 4));
           return;
         case 0xFF42: // FF42 SCY
           this.r.yscr = val;
+          console.log("YSCR: $" + GameBoy.toHex(this.r.yscr, 2));
           return;
         case 0xFF43: // FF43 SCX
           this.r.xscr = val;
@@ -322,6 +337,7 @@
               //We are actually displaying things
               this.renderScanBG();
               this.renderScanObj();
+              this.renderWindow();
             }
           }
           break;
@@ -334,10 +350,28 @@
             mapbase = this.r.bgmapbase + ((((this.r.curline + this.r.yscr) & 255) >> 3) << 5),
             y = (this.r.curline + this.r.yscr) & 7,
             x = this.r.xscr & 7,
-            t = (this.r.yscr >> 3) & 31,
+            t = (this.r.xscr >> 3) & 31, //FUCK THIS
             w = 160,
             pixel, tile, tilerow;
 
+        /*
+         * 160x144x4
+         * BG is a 256x256 pixel, 32x32 tile map in VRAM at 0x9800 or 0x9C00.
+         * 
+         * Each entry is a single number with the tile
+         *
+         * linebase will equal line * (4 * 160)
+         * bgmapbase should be (at start) 0x1800
+         * Therefore, mapbase should be:
+         *   bgmapbase + ((current_line // 8) + yscr)
+         * this.r.yscr is the background y scroll position, I need to track changes to this
+         * this.r.curline is just the current line's y, 0,0 at top left
+         * I need to determine why the >> 3) << 5 is applied, I'm almost sure its the issue
+         */
+        if(this.oldt != t) {
+          console.log("t " + this.oldt + " -> " + t);
+        }
+        this.oldt = t;
         if (this.r.bgtilebase) {
           tile = this._vram[mapbase + t];
           if (tile < 128) tile = 256 + tile;
@@ -349,7 +383,7 @@
             this._scrn.data[linebase + 0] = this._palette.bg[tilerow[x]];
             this._scrn.data[linebase + 1] = this._palette.bg[tilerow[x]];
             this._scrn.data[linebase + 2] = this._palette.bg[tilerow[x]];
-            this._scrn.data[linebase + 3] = 255;
+            this._scrn.data[linebase + 3] = 0xFF;
             x++;
             if (x == 8) {
               t = (t + 1) & 31;
@@ -367,7 +401,7 @@
             this._scrn.data[linebase + 0] = this._palette.bg[tilerow[x]];
             this._scrn.data[linebase + 1] = this._palette.bg[tilerow[x]];
             this._scrn.data[linebase + 2] = this._palette.bg[tilerow[x]];
-            this._scrn.data[linebase + 3] = 255; //this._palette.bg[tilerow[x]];
+            this._scrn.data[linebase + 3] = 0xFF;
             x++;
             if (x == 8) {
               t = (t + 1) & 31;
@@ -378,6 +412,9 @@
           } while (--w);
         }
       }
+    },
+    renderWindow: function() {
+      //TODO: implement
     },
     renderScanObj: function () {
       if (this.r.objon) {
@@ -404,11 +441,17 @@
               if (obj.x + x >= 0 && obj.x + x < 160) {
                 if (obj.xflip) {
                   if (tilerow[7 - x] && (obj.prio || !this.r._scanrow[x])) {
-                    this._scrn.data[linebase + 3] = pal[tilerow[7 - x]];
+                    this._scrn.data[linebase + 0] = pal[tilerow[7 - x]];
+                    this._scrn.data[linebase + 1] = pal[tilerow[7 - x]];
+                    this._scrn.data[linebase + 2] = pal[tilerow[7 - x]];
+                    this._scrn.data[linebase + 3] = 0xFF; //pal[tilerow[7 - x]];
                   }
                 } else {
                   if (tilerow[7 - x] && (obj.prio || !this._scanrow[x])) {
-                    this._scrn.data[linebase + 3] = pal[tilerow[x]];
+                    this._scrn.data[linebase + 0] = pal[tilerow[x]];
+                    this._scrn.data[linebase + 1] = pal[tilerow[x]];
+                    this._scrn.data[linebase + 2] = pal[tilerow[x]];
+                    this._scrn.data[linebase + 3] = 0xFF; //pal[tilerow[x]];
                   }
 
                 }

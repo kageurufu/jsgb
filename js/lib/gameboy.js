@@ -90,7 +90,7 @@ GameBoy.prototype = {
 
     var t1 = new Date();
     document.getElementById("fps").textContent = Math.round(10000/(t1-t0))/10;
-    //this.renderer.showInfo();
+    this.renderer.showInfo();
   },
   step: function () {
     this.cpu.step();
